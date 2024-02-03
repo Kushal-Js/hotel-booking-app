@@ -21,7 +21,7 @@ jobs:
   deploy:
 
     needs: build
-    runs-on: [hotel-booking-app]
+    runs-on: ubuntu-latest
     steps:
       - name: Pull Image from Docker Hub
         run: docker pull kushalgaur123/hotel-booking-app:latest
