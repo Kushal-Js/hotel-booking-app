@@ -21,7 +21,7 @@ jobs:
   deploy:
 
     needs: build
-    runs-on: [aws-ec2]
+    runs-on: [hotel-booking-app]
     steps:
       - name: Pull Image from Docker Hub
         run: docker pull kushalgaur123/hotel-booking-app:latest
