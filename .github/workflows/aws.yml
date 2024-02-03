@@ -27,5 +27,5 @@ jobs:
         run: docker pull kushalgaur123/hotel-booking-app:latest
       - name: Delete old docker container
         run: docker rm -f hotel-booking-app-container
-      - name: Run docker container
+      - name: Run docker container in aws
         run: docker run -d -p 3000:3000 --name hotel-booking-app-container kushalgaur123/hotel-booking-app:latest
