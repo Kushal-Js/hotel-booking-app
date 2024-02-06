@@ -2,8 +2,8 @@ name: Deploy to AWS EC2 #Name of action
     #specifying action trigger
 on:
     push:
-    branches:
-        - main
+      branches:
+          - main
 
 jobs: # Set of Operation that will run a github virtual environment
     Build_and_push_image: # specifying one job
