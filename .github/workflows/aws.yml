@@ -1,31 +1,110 @@
-name: CI&CD
-
+name: Deploy to AWS EC2 #Name of action
+    #specifying action trigger
 on:
-  push:
-    branches: [ "main" ]
+    push:
+    branches:
+        - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+jobs: # Set of Operation that will run a github virtual environment
+    Build_and_push_image: # specifying one job
+        runs-on: ubuntu-latest # specifying the OS the job will run on
+        steps: # list or operations that will run
+            - name: Checkout repository # Name of first operation
+              uses: actions/checkout@v2 # using an existing github action to checkout into the main repository (like git checkout branchname)
 
-    steps:
-    - uses: actions/checkout@v3
-    - name: Login to Docker Hub
-      run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
-    - name: Build Docker Image
-      run: docker compose build
-    - name: Publish Docker Image
-      run: docker compose push kushalgaur123/nestjs-api-prod:latest
+            - name: Install Docker #Operation to install docker listed
+              run: | # Run helps to run commands in the vitual environment (In this case we are running steps to install docker so we can build and push docker images to our ECR)
+                sudo apt-get update
+                sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+                curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg
+                echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo apt-get update
+                sudo apt-get -y install docker-ce docker-ce-cli containerd.io    
 
+            - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
+              uses: aws-actions/configure-aws-credentials@v1 # uses an existing github action  and provides credentials from our secrets
+              with:
+                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                aws-region: ${{ secrets.AWS_REGION }}
 
-  deploy:
+            - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v1
 
-    needs: build
-    runs-on: [hotel-app]
-    steps:
-      - name: Pull Image from Docker Hub
-        run: docker pull kushalgaur123/hotel-booking-app:latest
-      - name: Delete old docker container
-        run: docker rm -f hotel-booking-app-container
-      - name: Run docker container in aws
-        run: docker run -d -p 3000:3000 --name hotel-booking-app-container kushalgaur123/hotel-booking-app:latest
+            - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
+              env:
+                ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+                IMAGE_TAG: 1.0.0
+              run: |
+                docker build -t $ECR_REGISTRY/yourecrname:$IMAGE_TAG .
+                docker push $ECR_REGISTRY/yourecrname:$IMAGE_TAG
+
+            - name: copy file via ssh key #We would need our docker compose file in the ec2 instance so we are copying it there ahead of time using an existing scp github action
+              uses: appleboy/scp-action@v0.1.7 # the githhub action we are using
+              with:  #passing the required credentials from our secret
+                host: ${{ secrets.EC2_HOST }}
+                username: ${{ secrets.EC2_USERNAME }}
+                key: ${{ secrets.EC2_PRIVATE_KEY }}
+                port: 22
+                source: "docker-compose.yourecrname.prod.yml"
+                target: "/home/ubuntu"
+    Pull_and_deploy_in_ec2:  # After pushing to ecr we need to pull from our ec2 and spin up the container. so we define a seperate job for it
+        runs-on: ubuntu-latest # specifying OS for job to run in
+        needs: Build_and_push_image
+        steps:
+        - name: Deploy to EC2
+          uses: appleboy/ssh-action@master
+          with:
+            host: ${{ secrets.EC2_HOST }}
+            username: ${{ secrets.EC2_USERNAME }}
+            key: ${{ secrets.EC2_PRIVATE_KEY }}
+            script: |
+
+            # Installing aws cli
+
+            sudo apt-get update
+
+            sudo apt-get install -y awscli
+
+            # Configure AWS credentials
+
+            aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+            aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+            aws configure set default.region ${{ secrets.EC2_HOST }}
+
+            # Install Docker inside the remote EC2 instance
+
+            sudo apt-get update
+
+            sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg
+
+            echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            sudo apt-get update
+
+            sudo apt-get -y install docker-ce docker-ce-cli containerd.io
+
+            # Authenticate to ECR
+
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+            # Add environmental variable
+            export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
+
+            # Add SSH user to the docker group
+            sudo usermod -aG docker $USER
+
+            # Install Docker Compose inside the remote EC2 instance
+            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            sudo chmod +x /usr/local/bin/docker-compose
+
+            # Clear existing container and images with added project name, This will prevent the command from clearing containers of other docker compose file
+            docker-compose -f ~/docker-compose.yml -p booking-api down --rmi all
+
+            # Run the Docker commands for deployment with added project name , future down command will clear containers and images with this project name
+            docker-compose -f ~/docker-compose.yml -p booking-api up -d

@@ -1,0 +1,31 @@
+name: CI&CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Login to Docker Hub
+      run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
+    - name: Build Docker Image
+      run: docker compose build
+    - name: Publish Docker Image
+      run: docker compose push kushalgaur123/nestjs-api-prod:latest
+
+
+  deploy:
+
+    needs: build
+    runs-on: [hotel-app]
+    steps:
+      - name: Pull Image from Docker Hub
+        run: docker pull kushalgaur123/hotel-booking-app:latest
+      - name: Delete old docker container
+        run: docker rm -f hotel-booking-app-container
+      - name: Run docker container in aws
+        run: docker run -d -p 3000:3000 --name hotel-booking-app-container kushalgaur123/hotel-booking-app:latest
