@@ -30,7 +30,7 @@ jobs: # Set of Operation that will run a github virtual environment
 
             - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
               id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v1
+              uses: aws-actions/amazon-ecr-login@v2
 
             - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
               env:
