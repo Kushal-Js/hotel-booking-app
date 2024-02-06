@@ -61,50 +61,48 @@ jobs: # Set of Operation that will run a github virtual environment
             key: ${{ secrets.EC2_PRIVATE_KEY }}
             script: |
 
-            # Installing aws cli
+              # Installing aws cli
+              sudo apt-get update
+              sudo apt-get install -y awscli
 
-            sudo apt-get update
+              # Configure AWS credentials
 
-            sudo apt-get install -y awscli
+              aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
 
-            # Configure AWS credentials
+              aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-            aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws configure set default.region ${{ secrets.EC2_HOST }}
 
-            aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              # Install Docker inside the remote EC2 instance
 
-            aws configure set default.region ${{ secrets.EC2_HOST }}
+              sudo apt-get update
 
-            # Install Docker inside the remote EC2 instance
+              sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
 
-            sudo apt-get update
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg
 
-            sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+              echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/docker.gpg
+              sudo apt-get update
 
-            echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get -y install docker-ce docker-ce-cli containerd.io
 
-            sudo apt-get update
+              # Authenticate to ECR
 
-            sudo apt-get -y install docker-ce docker-ce-cli containerd.io
+              aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-            # Authenticate to ECR
+              # Add environmental variable
+              export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
 
-            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+              # Add SSH user to the docker group
+              sudo usermod -aG docker $USER
 
-            # Add environmental variable
-            export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
+              # Install Docker Compose inside the remote EC2 instance
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
 
-            # Add SSH user to the docker group
-            sudo usermod -aG docker $USER
+              # Clear existing container and images with added project name, This will prevent the command from clearing containers of other docker compose file
+              docker-compose -f ~/docker-compose.yml -p booking-api down --rmi all
 
-            # Install Docker Compose inside the remote EC2 instance
-            sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
-
-            # Clear existing container and images with added project name, This will prevent the command from clearing containers of other docker compose file
-            docker-compose -f ~/docker-compose.yml -p booking-api down --rmi all
-
-            # Run the Docker commands for deployment with added project name , future down command will clear containers and images with this project name
-            docker-compose -f ~/docker-compose.yml -p booking-api up -d
+              # Run the Docker commands for deployment with added project name , future down command will clear containers and images with this project name
+              docker-compose -f ~/docker-compose.yml -p booking-api up -d
