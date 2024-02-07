@@ -21,14 +21,17 @@ jobs: # Set of Operation that will run a github virtual environment
                 sudo apt-get update
                 sudo apt-get -y install docker-ce docker-ce-cli containerd.io    
 
-            - name: Log in to ECR
-              id: ecr-publish
-              uses: bitovi/github-actions-ecr-publish@v0.1.0
+            - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
+              uses: aws-actions/configure-aws-credentials@v1 # uses an existing github action  and provides credentials from our secrets
               with:
                 aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
                 aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                 aws-region: ${{ secrets.AWS_REGION }}
                 #role-to-assume: arn:aws:iam::123456789012:role/my-github-actions-role
+
+            - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v1
 
             - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
               env:
