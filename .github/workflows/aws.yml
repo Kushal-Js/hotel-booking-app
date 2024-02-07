@@ -27,18 +27,20 @@ jobs: # Set of Operation that will run a github virtual environment
                 aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
                 aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
                 aws-region: ${{ secrets.AWS_REGION }}
+                #role-to-assume: arn:aws:iam::123456789012:role/my-github-actions-role
 
             - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
               id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v2
+              uses: aws-actions/amazon-ecr-login@v1
 
             - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
               env:
                 ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+                REPOSITORY: booking-api
                 IMAGE_TAG: 1.0.0
               run: |
-                docker build -t $ECR_REGISTRY/yourecrname:$IMAGE_TAG .
-                docker push $ECR_REGISTRY/yourecrname:$IMAGE_TAG
+                docker build -t $ECR_REGISTRY/booking-api:$IMAGE_TAG .
+                docker push $ECR_REGISTRY/booking-api:$IMAGE_TAG
 
             - name: copy file via ssh key #We would need our docker compose file in the ec2 instance so we are copying it there ahead of time using an existing scp github action
               uses: appleboy/scp-action@v0.1.7 # the githhub action we are using
@@ -47,7 +49,7 @@ jobs: # Set of Operation that will run a github virtual environment
                 username: ${{ secrets.EC2_USERNAME }}
                 key: ${{ secrets.EC2_PRIVATE_KEY }}
                 port: 22
-                source: "docker-compose.yourecrname.prod.yml"
+                source: "docker-compose.yml"
                 target: "/home/ubuntu"
     Pull_and_deploy_in_ec2:  # After pushing to ecr we need to pull from our ec2 and spin up the container. so we define a seperate job for it
         runs-on: ubuntu-latest # specifying OS for job to run in
