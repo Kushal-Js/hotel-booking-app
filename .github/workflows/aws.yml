@@ -27,14 +27,13 @@ jobs: # Set of Operation that will run a github virtual environment
               with:
                 aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
                 aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                aws-region: ${{ secrets.AWS_REGION }}
+                aws-aws_default_region: ${{ secrets.AWS_REGION }}
+                ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+                aws_ecr_repo_name: booking-api
+                IMAGE_TAG: 1.0.0
                 #role-to-assume: arn:aws:iam::123456789012:role/my-github-actions-role
 
             - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
-              env:
-                ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-                REPOSITORY: booking-api
-                IMAGE_TAG: 1.0.0
               run: |
                 docker build -t $ECR_REGISTRY/booking-api:$IMAGE_TAG .
                 docker push $ECR_REGISTRY/booking-api:$IMAGE_TAG
