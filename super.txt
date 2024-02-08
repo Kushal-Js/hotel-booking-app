@@ -1,0 +1,14 @@
+            - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+              with:
+                mask-password: 'false'
+
+            - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
+              env:
+                ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                REPOSITORY: booking-api
+                IMAGE_TAG: 1.0.0
+              run: |
+                docker build -t $ECR_REGISTRY/booking-api:$IMAGE_TAG .
+                docker push $ECR_REGISTRY/booking-api:$IMAGE_TAG
