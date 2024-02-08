@@ -25,26 +25,18 @@ jobs: # Set of Operation that will run a github virtual environment
                 sudo apt-get update
                 sudo apt-get -y install docker-ce docker-ce-cli containerd.io    
 
+            - name: Login to Docker Hub
+              run: docker login -u ${{ secrets.DOCKER_USERNAME}} -p ${{ secrets.DOCKER_PASSWORD }}
+            - name: Build Docker Image
+              run: docker compose build
+            - name: Publish Docker Image
+              run: docker compose push kushalgaur123/booking-api:latest
+
             - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
               uses: aws-actions/configure-aws-credentials@master # uses an existing github action  and provides credentials from our secrets
               with:
                 role-to-assume: arn:aws:iam::734651757593:role/OIDC-LInk
                 aws-region: ${{ secrets.AWS_REGION }}
-
-            - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
-              id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v2
-              with:
-                mask-password: 'false'
-  
-            - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
-              env:
-                ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-                REPOSITORY: booking-api
-                IMAGE_TAG: 1.0.0
-              run: |
-                docker build -t $ECR_REGISTRY/booking-api:$IMAGE_TAG .
-                docker push $ECR_REGISTRY/booking-api:$IMAGE_TAG
 
 
             - name: copy file via ssh key #We would need our docker compose file in the ec2 instance so we are copying it there ahead of time using an existing scp github action
@@ -94,12 +86,11 @@ jobs: # Set of Operation that will run a github virtual environment
 
               sudo apt-get -y install docker-ce docker-ce-cli containerd.io
 
-              # Authenticate to ECR
 
-              aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-              # Add environmental variable
-              export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
+              #Pull from Docker Hub
+             
+              docker pull kushalgaur123/booking-api:latest
 
               # Add SSH user to the docker group
               sudo usermod -aG docker $USER

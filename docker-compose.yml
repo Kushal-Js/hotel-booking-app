@@ -12,7 +12,7 @@ services:
     restart: always
   prod:
     container_name: booking-api-container
-    image: ${ECR_REGISTRY}/booking-api:1.0.0
+    image: kushalgaur123/booking-api:latest
     build:
       context: .
       dockerfile: ./Dockerfile

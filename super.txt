@@ -12,3 +12,13 @@
               run: |
                 docker build -t $ECR_REGISTRY/booking-api:$IMAGE_TAG .
                 docker push $ECR_REGISTRY/booking-api:$IMAGE_TAG
+
+
+
+
+              # Authenticate to ECR
+
+              aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+              # Add environmental variable
+              export ECR_REGISTRY=${{ secrets.ECR_REGISTRY }}
