@@ -22,7 +22,7 @@ jobs: # Set of Operation that will run a github virtual environment
                 sudo apt-get -y install docker-ce docker-ce-cli containerd.io    
 
             - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
-              uses: aws-actions/configure-aws-credentials@v4 # uses an existing github action  and provides credentials from our secrets
+              uses: aws-actions/configure-aws-credentials@master # uses an existing github action  and provides credentials from our secrets
               with:
                 role-to-assume: arn:aws:iam::734651757593:role/OIDC-LInk
                 aws-region: ${{ secrets.AWS_REGION }}
