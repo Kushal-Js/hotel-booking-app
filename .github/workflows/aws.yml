@@ -10,7 +10,7 @@ jobs: # Set of Operation that will run a github virtual environment
         runs-on: ubuntu-latest # specifying the OS the job will run on
         steps: # list or operations that will run
             - name: Checkout repository # Name of first operation
-              uses: actions/checkout@v2 # using an existing github action to checkout into the main repository (like git checkout branchname)
+              uses: actions/checkout@v3 # using an existing github action to checkout into the main repository (like git checkout branchname)
 
             - name: Install Docker #Operation to install docker listed
               run: | # Run helps to run commands in the vitual environment (In this case we are running steps to install docker so we can build and push docker images to our ECR)
@@ -22,16 +22,16 @@ jobs: # Set of Operation that will run a github virtual environment
                 sudo apt-get -y install docker-ce docker-ce-cli containerd.io    
 
             - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
-              uses: aws-actions/configure-aws-credentials@v1 # uses an existing github action  and provides credentials from our secrets
+              uses: aws-actions/configure-aws-credentials@v4 # uses an existing github action  and provides credentials from our secrets
               with:
-                aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-                aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                role-to-assume: arn:aws:iam::734651757593:role/OIDC-LInk
                 aws-region: ${{ secrets.AWS_REGION }}
-                #role-to-assume: arn:aws:iam::123456789012:role/my-github-actions-role
 
             - name: Login to AWS ECR # This step logs into ECR with an existing github action after setting configurations
               id: login-ecr
-              uses: aws-actions/amazon-ecr-login@v1
+              uses: aws-actions/amazon-ecr-login@v2
+              with:
+                mask-password: 'false'
 
             - name: Build and push Docker image # This step pushes to ecr by using the docker command under run
               env:
