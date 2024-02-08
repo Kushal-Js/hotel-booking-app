@@ -30,7 +30,7 @@ jobs: # Set of Operation that will run a github virtual environment
             - name: Build Docker Image
               run: docker compose build
             - name: Publish Docker Image
-              run: docker compose push kushalgaur123/booking-api:latest
+              run: docker compose push
 
             - name: Configure AWS credentials # To push images to ECR we need to configure AWS credential so we can login
               uses: aws-actions/configure-aws-credentials@master # uses an existing github action  and provides credentials from our secrets
